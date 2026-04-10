@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CareCompanion – Post-Surgery Recovery Tracker</title>
+
+  <!-- ===== FONTS ===== -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap"
+    rel="stylesheet">
+
+  <!-- ===== CHART.JS CDN ===== -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+  <style>
+    /* ============================================================
+   CSS CUSTOM PROPERTIES — Design tokens for the whole app
+   ============================================================ */
+    :root {
+      --c-bg: #F0F7F4;
+      --c-surface: #FFFFFF;
+      --c-surface2: #E8F4EE;
+      --c-border: #D0E8DC;
+      --c-primary: #2D7D5A;
+      --c-primary-lt: #4AA87C;
+      --c-primary-bg: #EAF5EE;
+      --c-accent: #1A5C42;
+      --c-text: #1C2E26;
+      --c-text-muted: #5A7567;
+      --c-text-hint: #8FAD9C;
+
+      /* Status colours */
+      --c-ok: #2D7D5A;
+      --c-ok-bg: #EAF5EE;
+      --c-warn: #B87333;
+      --c-warn-bg: #FDF3E7;
+      --c-danger: #C0392B;
+      --c-danger-bg: #FDECEA;
+
+      /* Chart colours */
+      --chart-pain: #C0392B;
+      --chart-temp: #2471A3;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+
+      --shadow-sm: 0 1px 4px rgba(0, 0, 0, .06);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, .08);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, .10);
+
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body: 'DM Sans', system-ui, sans-serif;
+
+      --transition: all .2s ease;
+    }
+
+    /* ============================================================
+   RESET & BASE
+   ============================================================ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--c-bg);
+      color: var(--c-text);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============================================================
+   LAYOUT HELPERS
+   ============================================================ */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: var(--c-surface);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      padding: 16px;
+      margin-bottom: 12px;
+      border: 1px solid var(--c-border);
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      color: var(--c-accent);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title .icon {
+      width: 32px;
+      height: 32px;
+      background: var(--c-primary-bg);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+   HEADER
+   ============================================================ */
+    header {
+      background: var(--c-primary);
+      color: #fff;
+      padding: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      letter-spacing: -.01em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(255, 255, 255, .2);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    /* Streak badge */
+    .streak-badge {
+      background: rgba(255, 255, 255, .18);
+      border: 1.5px solid rgba(255, 255, 255, .35);
+      border-radius: 50px;
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: default;
+    }
+
+    /* ============================================================
+   NAV TABS
+   ============================================================ */
+    nav {
+      background: var(--c-accent);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-inner {
+      display: flex;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .nav-btn {
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, .65);
+      font-family: var(--font-body);
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 12px 18px;
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2.5px solid transparent;
+      transition: var(--transition);
+    }
+
+    .nav-btn:hover {
+      color: rgba(255, 255, 255, .9);
+    }
+
+    .nav-btn.active {
+      color: #fff;
+      border-bottom-color: #fff;
+    }
+
+    /* ============================================================
+   PAGE SECTIONS (shown/hidden via JS)
+   ============================================================ */
+    .page {
+      display: none;
+      padding: 16px 0 40px;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* ============================================================
+   ALERTS BOX
+   ============================================================ */
+    .alerts-wrapper {
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      animation: slideDown .3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .alert-item.danger {
+      background: var(--c-danger-bg);
+      color: var(--c-danger);
+      border: 1px solid rgba(192, 57, 43, .2);
+    }
+
+    .alert-item.warning {
+      background: var(--c-warn-bg);
+      color: var(--c-warn);
+      border: 1px solid rgba(184, 115, 51, .2);
+    }
+
+    .alert-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .alert-item.danger .alert-dot {
+      background: var(--c-danger);
+    }
+
+    .alert-item.warning .alert-dot {
+      background: var(--c-warn);
+    }
+
+    /* ============================================================
+   FORM STYLES
+   ============================================================ */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 8px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--c-bg);
+      border: 1.5px solid var(--c-border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--c-text);
+      transition: var(--transition);
+      outline: none;
+      appearance: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--c-primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(45, 125, 90, .12);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+      line-height: 1.5;
+    }
+
+    /* Pain slider */
+    .slider-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, var(--c-primary) 0%, var(--c-primary) var(--val, 30%), var(--c-border) var(--val, 30%));
+      outline: none;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--c-primary);
+      border: 3px solid #fff;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, .2);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--c-primary);
+      border: 3px solid #fff;
+      box-shadow: 0 1px 6px rgba(0, 0, 0, .2);
+      cursor: pointer;
+    }
+
+    /* Pain value badge */
+    .pain-value {
+      min-width: 42px;
+      height: 42px;
+      border-radius: var(--radius-sm);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      font-weight: 700;
+      transition: var(--transition);
+    }
+
+    /* Pain colour states */
+    .pain-low {
+      background: var(--c-ok-bg);
+      color: var(--c-ok);
+    }
+
+    .pain-medium {
+      background: var(--c-warn-bg);
+      color: var(--c-warn);
+    }
+
+    .pain-high {
+      background: var(--c-danger-bg);
+      color: var(--c-danger);
+    }
+
+    /* Submit button */
+    .btn-primary {
+      width: 100%;
+      padding: 15px;
+      background: var(--c-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      letter-spacing: .01em;
+    }
+
+    .btn-primary:hover {
+      background: var(--c-primary-lt);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      padding: 9px 18px;
+      background: var(--c-surface);
+      color: var(--c-text-muted);
+      border: 1.5px solid var(--c-border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--c-primary);
+      color: var(--c-primary);
+    }
+
+    .btn-danger {
+      padding: 9px 18px;
+      background: var(--c-danger-bg);
+      color: var(--c-danger);
+      border: 1.5px solid rgba(192, 57, 43, .2);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-danger:hover {
+      background: var(--c-danger);
+      color: #fff;
+    }
+
+    /* Success toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--c-accent);
+      color: #fff;
+      padding: 12px 22px;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      z-index: 999;
+      transition: transform .35s cubic-bezier(.34, 1.56, .64, 1);
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ============================================================
+   DASHBOARD — Stats row
+   ============================================================ */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-val {
+      font-family: var(--font-display);
+      font-size: 1.9rem;
+      color: var(--c-primary);
+      line-height: 1.1;
+    }
+
+    .stat-lbl {
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--c-text-hint);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 7px 16px;
+      border: 1.5px solid var(--c-border);
+      border-radius: 50px;
+      background: var(--c-surface);
+      color: var(--c-text-muted);
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-btn:hover {
+      border-color: var(--c-primary);
+      color: var(--c-primary);
+    }
+
+    .filter-btn.active {
+      background: var(--c-primary);
+      border-color: var(--c-primary);
+      color: #fff;
+    }
+
+    /* ============================================================
+   LOG CARDS
+   ============================================================ */
+    .log-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .log-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+    }
+
+    .log-card.status-ok::before {
+      background: var(--c-ok);
+    }
+
+    .log-card.status-warn::before {
+      background: var(--c-warn);
+    }
+
+    .log-card.status-danger::before {
+      background: var(--c-danger);
+    }
+
+    .log-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .log-date {
+      font-size: 13px;
+      color: var(--c-text-muted);
+      font-weight: 500;
+    }
+
+    .log-time {
+      font-size: 11px;
+      color: var(--c-text-hint);
+    }
+
+    .status-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 50px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .pill-ok {
+      background: var(--c-ok-bg);
+      color: var(--c-ok);
+    }
+
+    .pill-warn {
+      background: var(--c-warn-bg);
+      color: var(--c-warn);
+    }
+
+    .pill-danger {
+      background: var(--c-danger-bg);
+      color: var(--c-danger);
+    }
+
+    .log-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    @media (min-width: 480px) {
+      .log-metrics {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .metric {
+      background: var(--c-bg);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+
+    .metric-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--c-text);
+      line-height: 1.1;
+    }
+
+    .metric-lbl {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--c-text-hint);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .log-notes {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: var(--c-bg);
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      color: var(--c-text-muted);
+      font-style: italic;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--c-text-hint);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 14px;
+    }
+
+    .empty-state h3 {
+      font-family: var(--font-display);
+      color: var(--c-text-muted);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13.5px;
+    }
+
+    /* ============================================================
+   CHARTS PAGE
+   ============================================================ */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 240px;
+    }
+
+    /* ============================================================
+   REPORT PAGE
+   ============================================================ */
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .report-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .report-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (min-width: 480px) {
+      .report-summary-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    .summary-item {
+      background: var(--c-bg);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      text-align: center;
+    }
+
+    .summary-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--c-primary);
+    }
+
+    .summary-lbl {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--c-text-hint);
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    /* ============================================================
+   PRINT STYLES
+   ============================================================ */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #page-report, #page-report * {
+        visibility: visible;
+      }
+      #page-report {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: block !important;
+        padding: 0 !important;
+      }
+      header, nav, .report-actions, .toast {
+        display: none !important;
+      }
+      body {
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .card {
+        box-shadow: none !important;
+        border: none !important;
+      }
+      .report-summary-grid, .report-charts-grid, .report-alert-box {
+        page-break-inside: avoid;
+      }
+      table {
+        page-break-inside: auto;
+      }
+      tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+    }
+
+    /* ============================================================
+   RESPONSIVE TWEAKS
+   ============================================================ */
+    @media (min-width: 600px) {
+      .stats-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--c-border);
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===================================================
+     HEADER
+     =================================================== -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🩺</div>
+        CareCompanion
+      </div>
+      <div class="streak-badge" id="streakBadge" title="Recovery streak">
+        🔥 <span id="streakCount">0</span> day streak
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================
+     NAVIGATION TABS
+     =================================================== -->
+  <nav>
+    <div class="nav-inner">
+      <button class="nav-btn active" onclick="showPage('dashboard', this)">Dashboard</button>
+      <button class="nav-btn" onclick="showPage('checkin', this)">Check-in</button>
+      <button class="nav-btn" onclick="showPage('charts', this)">Charts</button>
+      <button class="nav-btn" onclick="showPage('report', this)">Report</button>
+    </div>
+  </nav>
+
+  <!-- ===================================================
+     TOAST NOTIFICATION
+     =================================================== -->
+  <div class="toast" id="toast">✓ Entry saved successfully!</div>
+
+  <!-- ===================================================
+     PAGE: CHECK-IN FORM
+     =================================================== -->
+  <section class="page" id="page-checkin">
+    <div class="container">
+
+      <div class="card">
+        <div class="section-title">
+          <div class="icon">📋</div>
+          Daily Check-in
+        </div>
+
+        <!-- Pain Level Slider -->
+        <div class="form-group">
+          <label>Pain Level</label>
+          <div class="slider-wrapper">
+            <input type="range" id="painSlider" min="1" max="10" value="3" oninput="updatePain(this.value)"
+              aria-label="Pain level 1 to 10">
+            <div class="pain-value pain-low" id="painBadge">3</div>
+          </div>
+          <div
+            style="display:flex; justify-content:space-between; font-size:11px; color:var(--c-text-hint); margin-top:5px;">
+            <span>1 – Minimal</span><span>10 – Severe</span>
+          </div>
+        </div>
+
+        <!-- Temperature -->
+        <div class="form-group">
+          <label>Body Temperature (°C)</label>
+          <input type="number" id="tempInput" min="35" max="42" step="0.1" placeholder="e.g. 37.2"
+            aria-label="Body temperature in Celsius">
+        </div>
+
+        <!-- Wound Condition -->
+        <div class="form-group">
+          <label>Wound Condition</label>
+          <select id="woundSelect" aria-label="Wound condition">
+            <option value="">Select condition…</option>
+            <option value="Good">Good – Healing well</option>
+            <option value="Normal">Normal – As expected</option>
+            <option value="Bad">Bad – Needs attention</option>
+          </select>
+        </div>
+
+        <!-- Activity Level -->
+        <div class="form-group">
+          <label>Activity Level</label>
+          <select id="activitySelect" aria-label="Activity level">
+            <option value="">Select level…</option>
+            <option value="Low">Low – Mostly resting</option>
+            <option value="Medium">Medium – Light movement</option>
+            <option value="High">High – Active</option>
+          </select>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            Notes (optional)
+            <div style="display:flex; gap:8px;">
+              <select id="audioLangSelect" style="padding: 4px 8px; font-size: 12px; width: auto; border-radius: var(--radius-sm);" aria-label="Select Dictation Language">
+                <option value="en-US">English</option>
+                <option value="hi-IN">Hindi</option>
+                <option value="kn-IN">Kannada</option>
+              </select>
+              <button id="micBtn" type="button" class="btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="toggleAudioIntake()">
+                🎤 Dictate
+              </button>
+            </div>
+          </label>
+          <textarea id="notesInput" placeholder="How are you feeling today? Any concerns?"></textarea>
+          <div id="micStatus" style="font-size: 12px; color: var(--c-primary); margin-top: 4px; display: none;">Listening... (will translate to English)</div>
+        </div>
+
+        <!-- Submit -->
+        <button class="btn-primary" onclick="saveEntry()">
+          💾 Save Today's Check-in
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================
+     PAGE: DASHBOARD
+     =================================================== -->
+  <section class="page active" id="page-dashboard">
+    <div class="container">
+
+      <!-- Patient Header -->
+      <div class="patient-header" style="background: var(--c-surface); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--c-border); margin-bottom: 16px; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+        👤 <span style="color: var(--c-text-muted);">Patient:</span> <span contenteditable="true" style="border-bottom: 1px dashed var(--c-text-hint); outline: none;">John Doe</span>
+      </div>
+
+      <!-- Alerts will be injected here -->
+      <div class="alerts-wrapper" id="latestAlerts"></div>
+
+      <!-- Summary stats row -->
+      <div class="stats-row" style="gap: 8px; margin-bottom: 16px;">
+        <div class="stat-card">
+          <div class="stat-val" id="totalEntries">0</div>
+          <div class="stat-lbl">Total Logs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="avgPain">—</div>
+          <div class="stat-lbl">Avg Pain</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="avgTemp">—</div>
+          <div class="stat-lbl">Avg Temp °C</div>
+        </div>
+      </div>
+
+      <!-- Filter buttons -->
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter(7, this)">Last 7 days</button>
+        <button class="filter-btn" onclick="setFilter(14, this)">Last 14 days</button>
+        <button class="filter-btn" onclick="setFilter(30, this)">Last 30 days</button>
+        <button class="filter-btn" onclick="setFilter(0, this)">All time</button>
+      </div>
+
+      <!-- Log list -->
+      <div id="logList"></div>
+
+      <!-- Danger zone -->
+      <div class="card" style="margin-top: 32px; border: 1.5px dashed var(--c-danger); background: var(--c-danger-bg);">
+        <div class="section-title" style="color:var(--c-danger);">
+          <div class="icon" style="background:rgba(192,57,43,.1);">⚠️</div>
+          Danger Zone
+        </div>
+        <p style="font-size:13.5px; color:var(--c-text-muted); margin-bottom:14px;">
+          This will permanently delete all your recovery logs. This action cannot be undone.
+        </p>
+        <button class="btn-danger" onclick="clearAllData()">🗑 Clear All Data</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================
+     PAGE: CHARTS
+     =================================================== -->
+  <section class="page" id="page-charts">
+    <div class="container">
+
+      <!-- Pain chart -->
+      <div class="card">
+        <div class="section-title">
+          <div class="icon" style="background:#FDECEA;">📈</div>
+          Pain Level Over Time
+        </div>
+        <div class="chart-container">
+          <canvas id="painChart" role="img" aria-label="Line chart showing pain level over time"></canvas>
+        </div>
+      </div>
+
+      <!-- Temperature chart -->
+      <div class="card">
+        <div class="section-title">
+          <div class="icon" style="background:#EBF5FB;">🌡️</div>
+          Temperature Over Time
+        </div>
+        <div class="chart-container">
+          <canvas id="tempChart" role="img" aria-label="Line chart showing body temperature over time"></canvas>
+        </div>
+        <!-- Reference line note -->
+        <p style="font-size:12px; color:var(--c-text-hint); margin-top:8px; text-align:center;">
+          🔴 Dashed line = fever threshold (38.5°C)
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================================================
+     PAGE: REPORT
+     =================================================== -->
+  <section class="page" id="page-report">
+    <div class="container" style="max-width: 850px;">
+      
+      <div class="card" style="border: 1px solid var(--c-border); padding: 0; overflow: hidden; background: #fff;">
+        
+        <!-- 1. PREMIUM HEADER -->
+        <div style="padding: 24px 32px; background: #fafdfb; border-bottom: 2px solid var(--c-border); position: relative;">
+          <h2 style="font-family: var(--font-display); color: var(--c-text); font-size: 1.6rem; margin-bottom: 6px;">Post-Surgery Recovery Report</h2>
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 12px;">
+            <div style="font-size: 15px;">Patient: <strong id="reportPatientName" style="color: var(--c-primary); font-size:16px;"></strong></div>
+            <div style="font-size: 11.5px; color: var(--c-text-muted);" id="reportGenDate"></div>
+          </div>
+          <button class="btn-secondary report-actions" onclick="window.print()" style="position: absolute; top: 24px; right: 32px;">🖨️ Print Report</button>
+        </div>
+
+        <div style="padding: 20px 32px;">
+           <p style="font-size:12px; color:var(--c-text-muted); margin-bottom:16px; font-weight: 500;" id="reportDateRange"></p>
+
+           <!-- 2. HEALTH SUMMARY PANEL -->
+           <div class="report-summary-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+             <div style="background: var(--c-bg); padding: 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--c-border);">
+               <div style="font-size: 20px; margin-bottom: 4px;">📋</div>
+               <div id="rTotalEntries" style="font-size: 18px; font-weight: 700; color: var(--c-text);">0</div>
+               <div style="font-size: 10px; text-transform: uppercase; color: var(--c-text-hint); font-weight: 700;">Total Logs</div>
+             </div>
+             <div style="background: var(--c-bg); padding: 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--c-border);">
+               <div style="font-size: 20px; margin-bottom: 4px;">📉</div>
+               <div id="rAvgPain" style="font-size: 18px; font-weight: 700; color: var(--c-text);">—</div>
+               <div style="font-size: 10px; text-transform: uppercase; color: var(--c-text-hint); font-weight: 700;">Avg Pain</div>
+             </div>
+             <div style="background: var(--c-bg); padding: 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--c-border);">
+               <div style="font-size: 20px; margin-bottom: 4px;">🌡️</div>
+               <div id="rAvgTemp" style="font-size: 18px; font-weight: 700; color: var(--c-text);">—</div>
+               <div style="font-size: 10px; text-transform: uppercase; color: var(--c-text-hint); font-weight: 700;">Avg Temp</div>
+             </div>
+             <div style="background: var(--c-bg); padding: 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--c-border);">
+               <div style="font-size: 20px; margin-bottom: 4px;">🔥</div>
+               <div id="rStreak" style="font-size: 18px; font-weight: 700; color: var(--c-text);">0</div>
+               <div style="font-size: 10px; text-transform: uppercase; color: var(--c-text-hint); font-weight: 700;">Day Streak</div>
+             </div>
+           </div>
+
+           <!-- 3. CHARTS SECTION -->
+           <div class="report-charts-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+             <div style="border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 12px; background: #fff;">
+               <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--c-accent); text-align: center; margin-bottom: 8px;">Pain Trend</div>
+               <div style="position: relative; height: 160px; width: 100%;"><canvas id="reportPainChart"></canvas></div>
+             </div>
+             <div style="border: 1px solid var(--c-border); border-radius: var(--radius-md); padding: 12px; background: #fff;">
+               <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--c-accent); text-align: center; margin-bottom: 8px;">Temperature Trend</div>
+               <div style="position: relative; height: 160px; width: 100%;"><canvas id="reportTempChart"></canvas></div>
+             </div>
+           </div>
+
+           <!-- 4. ALERTS SECTION -->
+           <div id="reportAlertsWrapper" class="report-alert-box" style="display: none; margin-bottom: 24px;">
+              <div style="background: var(--c-danger-bg); border: 1px solid rgba(192,57,43,.2); border-radius: var(--radius-md); padding: 14px;">
+                <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--c-danger); font-weight:700; margin-bottom:8px;">⚠️ Critical Alerts (Action Needed)</h3>
+                <div id="reportAlertsContent" style="font-size: 13px; color: var(--c-danger);"></div>
+              </div>
+           </div>
+
+           <!-- 5. LOGS TABLE SECTION -->
+           <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--c-text-hint); font-weight:700; border-bottom: 2px solid var(--c-border); padding-bottom: 6px; margin-bottom: 12px;">Recovery Logs</h3>
+           <div id="reportLog" style="overflow-x: auto;">
+              <!-- Table injected here -->
+           </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ===================================================
+     JAVASCRIPT
+     =================================================== -->
+  <script>
+
+    /* ============================================================
+       STATE & CONSTANTS
+       ============================================================ */
+    const STORAGE_KEY = 'carecompanion_logs';   // localStorage key
+    let currentFilter = 7;                       // default filter: 7 days
+    let painChartInst = null;                    // Chart.js instance references
+    let tempChartInst = null;
+
+    /* ============================================================
+       UTILITY FUNCTIONS
+       ============================================================ */
+
+    /** Load all entries from localStorage. Returns array (newest first). */
+    function loadEntries() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch { return []; }
+    }
+
+    /** Save entries array to localStorage. */
+    function saveEntries(arr) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+    }
+
+    /** Format ISO timestamp to readable date string. */
+    function fmtDate(iso) {
+      return new Date(iso).toLocaleDateString('en-GB', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+      });
+    }
+
+    /** Format ISO timestamp to time string. */
+    function fmtTime(iso) {
+      return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    /** Show a brief toast notification. */
+    function showToast(msg = '✓ Saved!') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    /** Filter entries to the last N days (0 = all). */
+    function filterByDays(entries, days) {
+      if (!days) return entries;
+      const cutoff = Date.now() - days * 86400000;
+      return entries.filter(e => new Date(e.timestamp).getTime() >= cutoff);
+    }
+
+    /* ============================================================
+       STATUS LOGIC
+       Determines "ok / warn / danger" based on readings.
+       ============================================================ */
+    function getStatus(entry) {
+      if (entry.pain > 8 || entry.temp > 38.5 || entry.wound === 'Bad') return 'danger';
+      if (entry.pain > 6 || entry.temp > 37.8 || entry.wound === 'Normal') return 'warn';
+      return 'ok';
+    }
+
+    /** Build alert messages for a given entry. Returns array of {type, msg}. */
+    function getAlerts(entry) {
+      const alerts = [];
+      if (entry.temp > 38.5) alerts.push({ type: 'danger', msg: `🌡️ High fever detected: ${entry.temp}°C — consult your doctor immediately.` });
+      if (entry.pain > 8) alerts.push({ type: 'danger', msg: `⚠️ Severe pain level: ${entry.pain}/10 — please contact your healthcare provider.` });
+      if (entry.temp > 37.8 && entry.temp <= 38.5) alerts.push({ type: 'warning', msg: `🌡️ Slightly elevated temperature: ${entry.temp}°C — monitor closely.` });
+      if (entry.pain > 6 && entry.pain <= 8) alerts.push({ type: 'warning', msg: `🩹 Moderate-high pain: ${entry.pain}/10 — consider speaking to your doctor.` });
+      if (entry.wound === 'Bad') alerts.push({ type: 'danger', msg: '🩹 Wound condition marked as "Bad" — seek medical attention.' });
+      return alerts;
+    }
+
+    /* ============================================================
+       STREAK CALCULATOR
+       Counts consecutive days (back from today) with at least 1 entry.
+       ============================================================ */
+    function calcStreak(entries) {
+      if (!entries.length) return 0;
+
+      // Build a set of unique date strings
+      const dates = new Set(entries.map(e => {
+        const d = new Date(e.timestamp);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      }));
+
+      let streak = 0;
+      const today = new Date();
+      for (let i = 0; i < 365; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        if (dates.has(key)) streak++;
+        else break;
+      }
+      return streak;
+    }
+
+    /* ============================================================
+       PAIN SLIDER — live colour update
+       ============================================================ */
+    function updatePain(val) {
+      val = parseInt(val);
+      const badge = document.getElementById('painBadge');
+      const slider = document.getElementById('painSlider');
+
+      // Update badge text
+      badge.textContent = val;
+
+      // Colour the badge based on severity
+      badge.className = 'pain-value ' + (val <= 4 ? 'pain-low' : val <= 7 ? 'pain-medium' : 'pain-high');
+
+      // Update slider gradient fill (CSS custom property)
+      const pct = ((val - 1) / 9 * 100).toFixed(1);
+      slider.style.setProperty('--val', pct + '%');
+    }
+
+    /* Initialise slider fill on page load */
+    updatePain(document.getElementById('painSlider').value);
+
+    /* ============================================================
+       SAVE ENTRY
+       ============================================================ */
+    function saveEntry() {
+      const pain = parseInt(document.getElementById('painSlider').value);
+      const temp = parseFloat(document.getElementById('tempInput').value);
+      const wound = document.getElementById('woundSelect').value;
+      const activity = document.getElementById('activitySelect').value;
+      const notes = document.getElementById('notesInput').value.trim();
+
+      // Validation
+      if (isNaN(temp) || temp < 35 || temp > 42) {
+        alert('Please enter a valid temperature between 35°C and 42°C.');
+        return;
+      }
+      if (!wound) { alert('Please select wound condition.'); return; }
+      if (!activity) { alert('Please select activity level.'); return; }
+
+      // Build entry object
+      const entry = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        pain, temp, wound, activity, notes
+      };
+
+      // Prepend to array (newest first) and persist
+      const entries = loadEntries();
+      entries.unshift(entry);
+      saveEntries(entries);
+
+      // Update streak badge in header
+      updateStreakBadge(entries);
+
+      // Show alerts from this entry
+      renderLatestAlerts(entry);
+
+      // Reset form (except slider)
+      document.getElementById('tempInput').value = '';
+      document.getElementById('woundSelect').value = '';
+      document.getElementById('activitySelect').value = '';
+      document.getElementById('notesInput').value = '';
+
+      showToast('✓ Entry saved successfully!');
+    }
+
+    /* ============================================================
+       UPDATE STREAK BADGE
+       ============================================================ */
+    function updateStreakBadge(entries) {
+      document.getElementById('streakCount').textContent = calcStreak(entries);
+    }
+
+    /* ============================================================
+       ALERTS — render latest entry's alerts in check-in view
+       ============================================================ */
+    function renderLatestAlerts(entry) {
+      const wrapper = document.getElementById('latestAlerts');
+      if (!entry) {
+         wrapper.style.display = 'none';
+         wrapper.innerHTML = '';
+         return;
+      }
+      const alerts = getAlerts(entry);
+      if (alerts.length === 0) {
+         wrapper.style.display = 'none';
+         wrapper.innerHTML = '';
+      } else {
+         wrapper.style.display = 'block';
+         wrapper.innerHTML = alerts.map(a => `
+    <div class="alert-item ${a.type}">
+      <div class="alert-dot"></div>
+      <div>${a.msg}</div>
+    </div>
+  `).join('');
+      }
+    }
+
+    /* ============================================================
+       NAVIGATION — switch between pages
+       ============================================================ */
+    function showPage(id, btn) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('page-' + id).classList.add('active');
+      btn.classList.add('active');
+
+      // Lazy-render page content when navigated to
+      if (id === 'dashboard') renderDashboard();
+      if (id === 'charts') renderCharts();
+      if (id === 'report') {
+        // Small delay ensures the display:block layout is fully computed before Chart.js draws
+        setTimeout(() => {
+          renderReport();
+        }, 50);
+      }
+    }
+
+    /* ============================================================
+       FILTER — dashboard day filter
+       ============================================================ */
+    function setFilter(days, btn) {
+      currentFilter = days;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderDashboard();
+    }
+
+    /* ============================================================
+       DASHBOARD RENDER
+       ============================================================ */
+    function renderDashboard() {
+      const all = loadEntries();
+      const filtered = filterByDays(all, currentFilter);
+
+      // Stats
+      document.getElementById('totalEntries').textContent = all.length;
+      if (filtered.length) {
+        const avgP = (filtered.reduce((s, e) => s + e.pain, 0) / filtered.length).toFixed(1);
+        const avgT = (filtered.reduce((s, e) => s + e.temp, 0) / filtered.length).toFixed(1);
+        document.getElementById('avgPain').textContent = avgP;
+        document.getElementById('avgTemp').textContent = avgT;
+      } else {
+        document.getElementById('avgPain').textContent = '—';
+        document.getElementById('avgTemp').textContent = '—';
+      }
+
+      updateStreakBadge(all);
+
+      // Log list
+      const list = document.getElementById('logList');
+      if (!filtered.length) {
+        list.innerHTML = `
+      <div class="empty-state" style="padding: 30px 20px;">
+        <div class="empty-icon" style="font-size: 40px; margin-bottom: 10px;">📭</div>
+        <h3>No recovery data yet</h3>
+        <p>No check-in logs found for this period.</p>
+      </div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map((e, idx) => {
+        const status = getStatus(e);
+        const pillClass = { ok: 'pill-ok', warn: 'pill-warn', danger: 'pill-danger' }[status];
+        const statusLabel = { ok: '● Normal', warn: '● Warning', danger: '● Danger' }[status];
+        const isLatest = idx === 0 ? '<span style="font-size:10px; background:var(--c-primary-bg); color:var(--c-primary); border-radius:50px; padding:2px 8px; font-weight:600; margin-left:6px;">Latest</span>' : '';
+
+        return `
+      <div class="log-card status-${status}">
+        <div class="log-header">
+          <div>
+            <div class="log-date">${fmtDate(e.timestamp)} ${isLatest}</div>
+            <div class="log-time">${fmtTime(e.timestamp)}</div>
+          </div>
+          <div class="status-pill ${pillClass}">${statusLabel}</div>
+        </div>
+        <div class="log-metrics">
+          <div class="metric">
+            <div class="metric-val">${e.pain}/10</div>
+            <div class="metric-lbl">Pain</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">${e.temp}°C</div>
+            <div class="metric-lbl">Temp</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">${e.wound}</div>
+            <div class="metric-lbl">Wound</div>
+          </div>
+          <div class="metric">
+            <div class="metric-val">${e.activity}</div>
+            <div class="metric-lbl">Activity</div>
+          </div>
+        </div>
+        ${e.notes ? `<div class="log-notes">"${e.notes}"</div>` : ''}
+      </div>`;
+      }).join('');
+    }
+
+    /* ============================================================
+       CHARTS RENDER
+       ============================================================ */
+    function renderCharts() {
+      const all = loadEntries();
+      // Use last 30 entries for charts (oldest first for chronological display)
+      const entries = all.slice(0, 30).reverse();
+
+      const labels = entries.map(e => fmtDate(e.timestamp));
+      const painData = entries.map(e => e.pain);
+      const tempData = entries.map(e => e.temp);
+
+      /* ------ Pain Chart ------ */
+      if (painChartInst) painChartInst.destroy();
+      painChartInst = new Chart(document.getElementById('painChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Pain Level',
+            data: painData,
+            borderColor: '#C0392B',
+            backgroundColor: 'rgba(192,57,43,.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#C0392B',
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            borderWidth: 2.5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              min: 0, max: 10,
+              ticks: { stepSize: 2, color: '#8FAD9C' },
+              grid: { color: 'rgba(0,0,0,.05)' }
+            },
+            x: {
+              ticks: { color: '#8FAD9C', maxRotation: 45, font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+
+      /* ------ Temperature Chart ------ */
+      if (tempChartInst) tempChartInst.destroy();
+      tempChartInst = new Chart(document.getElementById('tempChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Temperature (°C)',
+              data: tempData,
+              borderColor: '#2471A3',
+              backgroundColor: 'rgba(36,113,163,.08)',
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: '#2471A3',
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              borderWidth: 2.5
+            },
+            {
+              // Fever threshold reference line at 38.5°C
+              label: 'Fever threshold',
+              data: entries.map(() => 38.5),
+              borderColor: '#C0392B',
+              borderDash: [6, 4],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              min: 35, max: 42,
+              ticks: { stepSize: 1, color: '#8FAD9C', callback: v => v + '°C' },
+              grid: { color: 'rgba(0,0,0,.05)' }
+            },
+            x: {
+              ticks: { color: '#8FAD9C', maxRotation: 45, font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    /* ============================================================
+       REPORT RENDER
+       ============================================================ */
+    let rPainChart = null;
+    let rTempChart = null;
+
+    function renderReport() {
+      const entries = loadEntries();
+      const streak = calcStreak(entries);
+
+      // Patient Name
+      const ptNode = document.querySelector('#page-dashboard .patient-header span[contenteditable]');
+      if (ptNode) document.getElementById('reportPatientName').textContent = ptNode.textContent || 'Unknown';
+
+      // Date Generated
+      document.getElementById('reportGenDate').textContent = "Generated: " + new Date().toLocaleString('en-GB');
+
+      // Summary Stats
+      if (entries.length) {
+        const oldest = fmtDate(entries[entries.length - 1].timestamp);
+        const newest = fmtDate(entries[0].timestamp);
+        document.getElementById('reportDateRange').textContent = `Report Period: ${oldest} to ${newest}`;
+        
+        document.getElementById('rTotalEntries').textContent = entries.length;
+        document.getElementById('rStreak').textContent = streak;
+        document.getElementById('rAvgPain').textContent = (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1);
+        document.getElementById('rAvgTemp').textContent = (entries.reduce((s, e) => s + e.temp, 0) / entries.length).toFixed(1) + '°C';
+      } else {
+        document.getElementById('reportDateRange').textContent = 'No entries recorded for this period.';
+        document.getElementById('rTotalEntries').textContent = '0';
+        document.getElementById('rStreak').textContent = '0';
+        document.getElementById('rAvgPain').textContent = '—';
+        document.getElementById('rAvgTemp').textContent = '—';
+      }
+
+      // Critical Alerts
+      const allAlerts = entries.filter(e => getStatus(e) === 'danger')
+                               .flatMap(e => getAlerts(e).filter(a => a.type === 'danger')
+                               .map(a => `<div style="margin-bottom:4px;"><strong>${fmtDate(e.timestamp)}:</strong> ${a.msg}</div>`));
+      
+      const alertWrap = document.getElementById('reportAlertsWrapper');
+      if (allAlerts.length > 0) {
+         alertWrap.style.display = 'block';
+         document.getElementById('reportAlertsContent').innerHTML = allAlerts.join('');
+      } else {
+         alertWrap.style.display = 'none';
+         document.getElementById('reportAlertsContent').innerHTML = '';
+      }
+
+      // Logs Table
+      const logDiv = document.getElementById('reportLog');
+      if (!entries.length) {
+        logDiv.innerHTML = '<div style="background:var(--c-bg); padding:16px; border-radius:var(--radius-sm); color:var(--c-text-hint); text-align:center; font-size:13px; border:1px solid var(--c-border);">No recovery data available.</div>';
+      } else {
+        logDiv.innerHTML = `
+          <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; text-align: left; margin-bottom: 24px;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--c-border); color: var(--c-text-muted);">
+                <th style="padding: 10px 8px; font-weight: 600;">Date & Time</th>
+                <th style="padding: 10px 8px; font-weight: 600;">Pain</th>
+                <th style="padding: 10px 8px; font-weight: 600;">Temp</th>
+                <th style="padding: 10px 8px; font-weight: 600;">Wound</th>
+                <th style="padding: 10px 8px; font-weight: 600;">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map(e => `
+                <tr style="border-bottom: 1px solid rgba(0,0,0,.05);">
+                  <td style="padding: 10px 8px; font-weight: 500;">${fmtDate(e.timestamp)}<br><span style="color:var(--c-text-hint); font-size:11px;">${fmtTime(e.timestamp)}</span></td>
+                  <td style="padding: 10px 8px; font-weight: 600; color: ${e.pain > 7 ? 'var(--c-danger)' : 'var(--c-text)'};">${e.pain}/10</td>
+                  <td style="padding: 10px 8px; font-weight: 600; color: ${e.temp > 38.5 ? 'var(--c-danger)' : 'var(--c-text)'};">${e.temp}°C</td>
+                  <td style="padding: 10px 8px; color: ${e.wound === 'Bad' ? 'var(--c-danger)' : 'inherit'}; font-weight: 500;">${e.wound}</td>
+                  <td style="padding: 10px 8px; color: var(--c-text-muted); font-style: italic;">${e.notes ? '"'+e.notes+'"' : '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      // Charts in Report (last 30)
+      const chartEntries = entries.slice(0, 30).reverse();
+      const labels = chartEntries.map(e => fmtDate(e.timestamp));
+      
+      const pCtx = document.getElementById('reportPainChart');
+      if (rPainChart) rPainChart.destroy();
+      rPainChart = new Chart(pCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ data: chartEntries.map(e => e.pain), borderColor: '#C0392B', backgroundColor: 'rgba(192,57,43,.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 2, pointHoverRadius: 4 }]
+        },
+        options: {
+          animation: false,
+          responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { min: 0, max: 10, ticks: { stepSize: 2 } }, x: { display: false } }
+        }
+      });
+
+      const tCtx = document.getElementById('reportTempChart');
+      if (rTempChart) rTempChart.destroy();
+      rTempChart = new Chart(tCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ data: chartEntries.map(e => e.temp), borderColor: '#2471A3', backgroundColor: 'rgba(36,113,163,.08)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 2, pointHoverRadius: 4 },
+                     { data: chartEntries.map(() => 38.5), borderColor: '#C0392B', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, fill: false }]
+        },
+        options: {
+          animation: false,
+          responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+          scales: { y: { min: 35, max: 42, ticks: { stepSize: 1 } }, x: { display: false } }
+        }
+      });
+    }
+
+    /* ============================================================
+       CLEAR ALL DATA
+       ============================================================ */
+    function clearAllData() {
+      if (!confirm('⚠️ Are you sure? This will permanently delete ALL your recovery logs.')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      updateStreakBadge([]);
+      document.getElementById('latestAlerts').innerHTML = '';
+      renderDashboard();
+      showToast('All data cleared.');
+    }
+
+    /* ============================================================
+       INITIALISE ON PAGE LOAD
+       ============================================================ */
+    (function init() {
+      const entries = loadEntries();
+      updateStreakBadge(entries);
+
+      // If there's a recent entry, show any alerts for it on the dashboard
+      if (entries.length) {
+        const latest = entries[0];
+        const today = new Date();
+        const entryDate = new Date(latest.timestamp);
+        const sameDay = (
+          entryDate.getFullYear() === today.getFullYear() &&
+          entryDate.getMonth() === today.getMonth() &&
+          entryDate.getDate() === today.getDate()
+        );
+        if (sameDay) {
+           renderLatestAlerts(latest);
+        } else {
+           renderLatestAlerts(null);
+        }
+      } else {
+        renderLatestAlerts(null);
+      }
+
+      // Initialise the dashboard as it is now the home page
+      renderDashboard();
+
+      // Listen for print to ensure report is rendered before printing
+      window.addEventListener('beforeprint', () => { 
+        document.getElementById('page-report').classList.add('active'); // guarantee dimensions
+        renderReport(); 
+      });
+    })();
+
+    /* ============================================================
+       AUDIO INTAKE & TRANSLATION
+       ============================================================ */
+    let recognition;
+    let isRecording = false;
+
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech Recognition API is not supported in this browser.");
+        return false;
+      }
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = function() {
+        isRecording = true;
+        document.getElementById('micBtn').innerHTML = '⏹ Stop';
+        document.getElementById('micBtn').style.background = 'var(--c-danger-bg)';
+        document.getElementById('micBtn').style.color = 'var(--c-danger)';
+        document.getElementById('micStatus').style.display = 'block';
+        document.getElementById('micStatus').textContent = 'Listening... (Speech will be translated to English)';
+      };
+
+      recognition.onresult = async function(event) {
+        const transcript = event.results[0][0].transcript;
+        const lang = document.getElementById('audioLangSelect').value;
+        const sourceLang = lang.split('-')[0];
+        
+        document.getElementById('micStatus').textContent = 'Processing & translating...';
+        
+        try {
+          let translatedText = transcript;
+          if (sourceLang !== 'en') {
+            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=en&dt=t&q=${encodeURIComponent(transcript)}`);
+            const data = await res.json();
+            translatedText = data[0].map(item => item[0]).join('');
+          }
+          
+          const notesInput = document.getElementById('notesInput');
+          notesInput.value = (notesInput.value + ' ' + translatedText).trim();
+          showToast('✓ Audio note added & translated!');
+        } catch (error) {
+          console.error('Translation error:', error);
+          showToast('Translation failed. Appended original text.');
+          const notesInput = document.getElementById('notesInput');
+          notesInput.value = (notesInput.value + ' ' + transcript).trim();
+        }
+      };
+
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error", event.error);
+        if(event.error !== 'no-speech') {
+          showToast('Error during speech recognition.');
+        }
+        stopDictation();
+      };
+
+      recognition.onend = function() {
+        stopDictation();
+      };
+      
+      return true;
+    }
+
+    function toggleAudioIntake() {
+      if (!recognition) {
+        if (!initSpeechRecognition()) return;
+      }
+      
+      if (isRecording) {
+        recognition.stop();
+      } else {
+        const lang = document.getElementById('audioLangSelect').value;
+        recognition.lang = lang;
+        try {
+          recognition.start();
+        } catch(e) {
+          console.error(e);
+        }
+      }
+    }
+
+    function stopDictation() {
+        isRecording = false;
+        document.getElementById('micBtn').innerHTML = '🎤 Dictate';
+        document.getElementById('micBtn').style.background = '';
+        document.getElementById('micBtn').style.color = '';
+        document.getElementById('micStatus').style.display = 'none';
+        document.getElementById('micStatus').textContent = 'Listening... (will translate to English)';
+    }
+
+  </script>
+</body>
+
+</html>
