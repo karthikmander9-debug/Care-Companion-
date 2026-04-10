@@ -138,7 +138,8 @@
       const entry = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        pain, temp, wound, activity, notes
+        pain, temp, wound, activity, notes,
+        photo: currentPhotoBase64
       };
 
       // Prepend to array (newest first) and persist
@@ -157,8 +158,126 @@
       document.getElementById('woundSelect').value = '';
       document.getElementById('activitySelect').value = '';
       document.getElementById('notesInput').value = '';
+      removePhoto();
 
       showToast('✓ Entry saved successfully!');
+    }
+
+    /* ============================================================
+       PHOTO UPLOAD LOGIC
+       ============================================================ */
+    let currentPhotoBase64 = null;
+
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = function(e) {
+        // Compress image using Canvas to save localStorage space
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          } else if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.65); // 65% quality JPEG
+
+          document.getElementById('uploadPreview').style.display = 'flex';
+          document.getElementById('previewImg').src = currentPhotoBase64;
+        };
+      };
+    }
+
+    function removePhoto(event) {
+      if (event) { event.stopPropagation(); }
+      currentPhotoBase64 = null;
+      document.getElementById('photoInput').value = '';
+      document.getElementById('uploadPreview').style.display = 'none';
+      document.getElementById('previewImg').src = '';
+    }
+
+    /* ============================================================
+       CAMERA & PHOTO LOGIC
+       ============================================================ */
+    let videoStream = null;
+
+    async function startCamera() {
+      const video = document.getElementById('cameraStream');
+      const errorMsg = document.getElementById('cameraError');
+      
+      document.getElementById('uploadPreview').style.display = 'none';
+      document.getElementById('cameraInterface').style.display = 'flex';
+      errorMsg.style.display = 'none';
+
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' }, 
+          audio: false 
+        });
+        video.srcObject = videoStream;
+      } catch (err) {
+        console.error("Camera error:", err);
+        errorMsg.textContent = "Camera access denied. Please check permissions.";
+        errorMsg.style.display = 'block';
+      }
+    }
+
+    function stopCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+      }
+      document.getElementById('cameraInterface').style.display = 'none';
+      // If we already had a photo, restore its preview
+      if (currentPhotoBase64) {
+        document.getElementById('uploadPreview').style.display = 'flex';
+      }
+    }
+
+    function capturePhoto() {
+      const video = document.getElementById('cameraStream');
+      if (!videoStream || !video.videoWidth) return;
+
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 800;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+
+      if (width > MAX_WIDTH) {
+        height *= MAX_WIDTH / width;
+        width = MAX_WIDTH;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, width, height);
+
+      currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.65);
+      
+      stopCamera(); // Stop video stream
+
+      // Show Preview
+      document.getElementById('previewImg').src = currentPhotoBase64;
+      document.getElementById('uploadPreview').style.display = 'flex';
     }
 
     /* ============================================================
@@ -290,6 +409,7 @@
           </div>
         </div>
         ${e.notes ? `<div class="log-notes">"${e.notes}"</div>` : ''}
+        ${e.photo ? `<div style="margin-top: 16px; display: flex; justify-content: center;"><img src="${e.photo}" style="max-height: 240px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 16px rgba(0,0,0,0.08); object-fit: contain;"></div>` : ''}
       </div>`;
       }).join('');
     }
@@ -465,7 +585,10 @@
                   <td style="padding: 10px 8px; font-weight: 600; color: ${e.pain > 7 ? 'var(--c-danger)' : 'var(--c-text)'};">${e.pain}/10</td>
                   <td style="padding: 10px 8px; font-weight: 600; color: ${e.temp > 38.5 ? 'var(--c-danger)' : 'var(--c-text)'};">${e.temp}°C</td>
                   <td style="padding: 10px 8px; color: ${e.wound === 'Bad' ? 'var(--c-danger)' : 'inherit'}; font-weight: 500;">${e.wound}</td>
-                  <td style="padding: 10px 8px; color: var(--c-text-muted); font-style: italic;">${e.notes ? '"'+e.notes+'"' : '-'}</td>
+                  <td style="padding: 10px 8px; color: var(--c-text-muted); font-style: italic;">
+                    ${e.notes ? '"'+e.notes+'"' : '-'}
+                    ${e.photo ? `<br><img src="${e.photo}" style="max-height: 80px; max-width: 120px; border-radius: 6px; margin-top: 8px; border: 1px solid rgba(0,0,0,0.1); object-fit: contain;">` : ''}
+                  </td>
                 </tr>
               `).join('')}
             </tbody>

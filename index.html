@@ -133,6 +133,33 @@
           <div id="micStatus" style="font-size: 12px; color: var(--c-primary); margin-top: 4px; display: none;">Listening... (will translate to English)</div>
         </div>
 
+        <!-- Photo Section (Upload + Camera) -->
+        <div class="form-group">
+          <label>Wound / Progress Photo (Optional)</label>
+          
+          <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+            <button type="button" class="btn-secondary" style="flex: 1; padding: 14px; font-size: 15px; border-color: rgba(0, 102, 255, 0.25);" onclick="startCamera()">📷 Open Camera</button>
+            <button type="button" class="btn-secondary" style="flex: 1; padding: 14px; font-size: 15px; border-color: rgba(0, 102, 255, 0.25);" onclick="document.getElementById('photoInput').click()">📁 Upload File</button>
+          </div>
+          <input type="file" id="photoInput" accept="image/png, image/jpeg, image/jpg" style="display: none;" onchange="handlePhotoUpload(event)">
+
+          <!-- Camera Stream Interface -->
+          <div id="cameraInterface" style="display: none; flex-direction: column; gap: 12px; margin-bottom: 16px; background: rgba(255,255,255,0.6); padding: 16px; border-radius: var(--radius-md); border: 2px dashed rgba(0,102,255,0.25);">
+             <video id="cameraStream" autoplay playsinline style="width: 100%; border-radius: 12px; background: #0f172a; max-height: 300px; object-fit: cover;"></video>
+             <div style="display: flex; gap: 10px;">
+               <button type="button" class="btn-primary" style="padding: 12px; flex: 2;" onclick="capturePhoto()">📸 Capture Photo</button>
+               <button type="button" class="btn-secondary" style="padding: 12px; flex: 1;" onclick="stopCamera()">Cancel</button>
+             </div>
+             <p id="cameraError" style="color: var(--c-danger); font-size: 13px; display: none; text-align: center; font-weight: 600; margin: 0;"></p>
+          </div>
+
+          <!-- Captured/Uploaded Image Preview -->
+          <div id="uploadPreview" class="upload-preview" style="display: none; padding: 24px; border: 2px dashed rgba(0, 102, 255, 0.25); border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.6); text-align: center;">
+            <img id="previewImg" src="" alt="Preview">
+            <button type="button" class="btn-remove-photo" onclick="removePhoto(event)">✕ Remove</button>
+          </div>
+        </div>
+
         <!-- Submit -->
         <button class="btn-primary" onclick="saveEntry()">
           💾 Save Today's Check-in
