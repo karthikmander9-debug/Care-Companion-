@@ -510,6 +510,81 @@
     }
 
     /* ============================================================
+       WHATSAPP SHARING (PDF)
+       ============================================================ */
+    async function shareToWhatsApp() {
+      const entries = loadEntries();
+      if (!entries.length) {
+        alert("No data available to share yet.");
+        return;
+      }
+      
+      const ptNode = document.getElementById('reportPatientName');
+      const pName = ptNode && ptNode.textContent !== 'Unknown' ? ptNode.textContent.replace(/[^a-z0-9]/gi, '_') : 'Patient';
+      const filename = `CareCompanion_Report_${pName}.pdf`;
+
+      const element = document.querySelector('#page-report .card');
+
+      // Hide actions temporarily for PDF render
+      const actions = element.querySelector('.report-actions');
+      if (actions) actions.style.display = 'none';
+
+      // Ensure report page is active briefly so layout is correct for html2canvas
+      document.querySelector('#page-report').classList.add('active');
+      renderReport();
+      
+      const opt = {
+        margin:       [0.5, 0.5, 0.5, 0.5],
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      try {
+        showToast('Generating PDF... Please wait.');
+        
+        // Generate blob
+        const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+        if (actions) actions.style.display = 'flex'; // restore buttons
+
+        const file = new File([pdfBlob], filename, { type: "application/pdf" });
+
+        // Check if device supports sharing files directly (Mobile & Windows 11/Modern macOS)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'CareCompanion Report',
+            text: 'Here is the medical recovery report.',
+            files: [file]
+          });
+        } else {
+          // Fallback algorithm for older Windows / unsupported desktop browsers
+          showToast('Downloading PDF! Please attach it manually in WhatsApp.');
+          
+          // Trigger download automatically
+          const url = URL.createObjectURL(pdfBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          // Open WhatsApp web API asking them to upload the downloaded file
+          const msg = encodeURIComponent(`*🩺 CareCompanion Recovery Report*\nThe PDF medical report has been downloaded to my device. I am attaching it to this message!`);
+          setTimeout(() => {
+            window.open(`https://wa.me/?text=${msg}`, '_blank');
+          }, 1500);
+        }
+      } catch (e) {
+        if (actions) actions.style.display = 'flex';
+        console.error(e);
+        alert('Failed to generate PDF for WhatsApp.');
+      }
+    }
+
+    /* ============================================================
        CLEAR ALL DATA
        ============================================================ */
     function clearAllData() {
