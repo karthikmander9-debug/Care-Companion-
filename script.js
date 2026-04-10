@@ -1,4 +1,4 @@
-﻿    /* ============================================================
+    /* ============================================================
        STATE & CONSTANTS
        ============================================================ */
     const STORAGE_KEY = 'carecompanion_logs';   // localStorage key
@@ -404,7 +404,7 @@
       const streak = calcStreak(entries);
 
       // Patient Name
-      const ptNode = document.querySelector('#page-dashboard .patient-header span[contenteditable]');
+      const ptNode = document.querySelector('#page-checkin .patient-header span[contenteditable]');
       if (ptNode) document.getElementById('reportPatientName').textContent = ptNode.textContent || 'Unknown';
 
       // Date Generated

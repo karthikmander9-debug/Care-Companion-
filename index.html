@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -39,8 +39,8 @@
      =================================================== -->
   <nav>
     <div class="nav-inner">
-      <button class="nav-btn active" onclick="showPage('dashboard', this)">Dashboard</button>
-      <button class="nav-btn" onclick="showPage('checkin', this)">Check-in</button>
+      <button class="nav-btn active" onclick="showPage('checkin', this)">Check-in</button>
+      <button class="nav-btn" onclick="showPage('dashboard', this)">Dashboard</button>
       <button class="nav-btn" onclick="showPage('charts', this)">Charts</button>
       <button class="nav-btn" onclick="showPage('report', this)">Report</button>
     </div>
@@ -54,8 +54,13 @@
   <!-- ===================================================
      PAGE: CHECK-IN FORM
      =================================================== -->
-  <section class="page" id="page-checkin">
+  <section class="page active" id="page-checkin">
     <div class="container">
+
+      <!-- Patient Header -->
+      <div class="patient-header" style="background: var(--c-surface); padding: 14px 20px; border-radius: var(--radius-md); border: 1px solid var(--c-border); margin-bottom: 24px; font-weight: 700; font-family: var(--font-display); font-size: 16px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-sm); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);">
+        👤 <span style="color: var(--c-text-muted);">Patient:</span> <span contenteditable="true" style="border-bottom: 2px dashed var(--c-primary-lt); outline: none; color: var(--c-primary); min-width: 120px; padding: 2px 6px;">John Doe</span>
+      </div>
 
       <div class="card">
         <div class="section-title">
@@ -136,13 +141,8 @@
   <!-- ===================================================
      PAGE: DASHBOARD
      =================================================== -->
-  <section class="page active" id="page-dashboard">
+  <section class="page" id="page-dashboard">
     <div class="container">
-
-      <!-- Patient Header -->
-      <div class="patient-header" style="background: var(--c-surface); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--c-border); margin-bottom: 16px; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px;">
-        👤 <span style="color: var(--c-text-muted);">Patient:</span> <span contenteditable="true" style="border-bottom: 1px dashed var(--c-text-hint); outline: none;">John Doe</span>
-      </div>
 
       <!-- Alerts will be injected here -->
       <div class="alerts-wrapper" id="latestAlerts"></div>
